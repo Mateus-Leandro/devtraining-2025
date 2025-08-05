@@ -37,7 +37,7 @@ export class CoursesService {
     }
   }
 
-  remove(id: number) {
+  delete(id: number) {
     const index = this.courses.findIndex((course) => course.id === id);
     if (index === -1) return;
 
