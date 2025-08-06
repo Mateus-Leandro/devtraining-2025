@@ -1,51 +1,57 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Course } from './entities/courses.entity';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class CoursesService {
-  private courses: Course[] = [
-    {
-      id: 1,
-      name: 'NestJs',
-      description: 'Curso sobre fundamentos do framework NestJS',
-      tags: ['node.js', 'nestjs', 'javascript', 'typescript'],
-    },
-  ];
+  constructor(
+    @InjectRepository(Course)
+    private readonly courseRepository: Repository<Course>,
+  ) {}
 
-  findAll() {
-    return this.courses;
+  async findAll() {
+    return await this.courseRepository.find();
   }
 
-  findOne(id: number) {
-    const course = this.courses.find((course) => course.id === id);
+  async findOne(id: number) {
+    const course = await this.courseRepository.findOne({
+      where: { id },
+    });
+
     if (!course) {
       throw new NotFoundException(`Course ID ${id} not found`);
     }
     return course;
   }
 
-  create(createCourseDTO) {
-    this.courses.push(createCourseDTO);
-    return createCourseDTO;
+  async create(createCourseDTO) {
+    const course = this.courseRepository.create(createCourseDTO);
+    return await this.courseRepository.save(course);
   }
 
-  update(id: number, updateCourseDTO) {
-    const existingCourse = this.findOne(id);
-    if (existingCourse) {
-      const index = this.courses.findIndex((course) => course.id === id);
-      if (index === -1) return;
+  async update(id: number, updateCourseDTO) {
+    const course = await this.courseRepository.preload({
+      ...updateCourseDTO,
+      id,
+    });
 
-      this.courses[index] = {
-        id,
-        ...updateCourseDTO,
-      };
+    if (!course) {
+      throw new NotFoundException(`Course ID ${id} not found`);
     }
+
+    return await this.courseRepository.save(course);
   }
 
-  delete(id: number) {
-    const index = this.courses.findIndex((course) => course.id === id);
-    if (index === -1) return;
+  async remove(id: number) {
+    const course = await this.courseRepository.findOne({
+      where: { id },
+    });
 
-    this.courses.splice(index, 1);
+    if (!course) {
+      throw new NotFoundException(`Course ID ${id} not found`);
+    }
+
+    return this.courseRepository.remove(course);
   }
 }

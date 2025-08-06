@@ -40,6 +40,6 @@ export class CoursesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @Delete(':id')
   delete(@Param('id') id: number) {
-    this.courseService.delete(id);
+    this.courseService.remove(id);
   }
 }
