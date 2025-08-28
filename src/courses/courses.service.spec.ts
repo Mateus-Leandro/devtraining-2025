@@ -1,18 +1,77 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { randomUUID } from 'node:crypto';
 import { CoursesService } from './courses.service';
+import { createCourseDTO } from './dto/create-course.dto';
 
 describe('CoursesService', () => {
   let service: CoursesService;
+  let id: string;
+  let created_at: Date;
+  let expectOutputTags: any;
+  let expectOutputCourses: any;
+  let mockCourseRepository: any;
+  let mockTagRepository: any;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [CoursesService],
-    }).compile();
+    service = new CoursesService();
+    id = randomUUID();
+    created_at = new Date();
 
-    service = module.get<CoursesService>(CoursesService);
+    expectOutputTags = [
+      {
+        id,
+        name: 'nestjs',
+        created_at,
+      },
+    ];
+
+    expectOutputCourses = {
+      id,
+      name: 'test',
+      description: 'test description',
+      created_at,
+      tags: expectOutputTags,
+    };
+
+    mockCourseRepository = {
+      create: jest.fn().mockImplementation((course) => ({
+        ...course,
+      })),
+      save: jest.fn().mockImplementation((course) => ({
+        ...course,
+        id: id,
+        created_at: created_at,
+      })),
+    };
+
+    mockTagRepository = {
+      create: jest.fn().mockImplementation((tag) => ({
+        ...tag,
+        id: id,
+        created_at: created_at,
+      })),
+      findOne: jest.fn(),
+    };
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('should create a course', async () => {
+    //@ts-expect-error defined part of methods
+    service['courseRepository'] = mockCourseRepository;
+    //@ts-expect-error defined part of methods
+    service['tagRepository'] = mockTagRepository;
+
+    const createCourseDTO: createCourseDTO = {
+      name: 'test',
+      description: 'test description',
+      tags: ['nestjs'],
+    };
+
+    const newCourse = await service.create(createCourseDTO);
+
+    expect(mockCourseRepository.save).toHaveBeenCalled();
+    expect(expectOutputCourses).toStrictEqual(newCourse);
   });
 });
