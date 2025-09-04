@@ -41,6 +41,8 @@ describe('CoursesService', () => {
         id: id,
         created_at: created_at,
       })),
+      findAll: jest.fn(),
+      find: jest.fn().mockResolvedValue([expectOutputCourses]),
     };
 
     mockTagRepository = {
@@ -73,5 +75,15 @@ describe('CoursesService', () => {
 
     expect(mockCourseRepository.save).toHaveBeenCalled();
     expect(expectOutputCourses).toStrictEqual(newCourse);
+  });
+
+  it('should list all courses', async () => {
+    //@ts-expect-error defined part of methods
+    service['courseRepository'] = mockCourseRepository;
+
+    const courses = await service.findAll();
+
+    expect(mockCourseRepository.find).toHaveBeenCalled();
+    expect(courses).toStrictEqual([expectOutputCourses]);
   });
 });
