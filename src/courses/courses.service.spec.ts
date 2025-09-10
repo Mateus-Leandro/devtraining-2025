@@ -43,6 +43,13 @@ describe('CoursesService', () => {
       })),
       findAll: jest.fn(),
       find: jest.fn().mockResolvedValue([expectOutputCourses]),
+      findOne: jest
+        .fn()
+        .mockImplementation(({ where: { id } }) =>
+          Promise.resolve(
+            expectOutputCourses.id === id ? expectOutputCourses : null,
+          ),
+        ),
     };
 
     mockTagRepository = {
@@ -85,5 +92,14 @@ describe('CoursesService', () => {
 
     expect(mockCourseRepository.find).toHaveBeenCalled();
     expect(courses).toStrictEqual([expectOutputCourses]);
+  });
+
+  it('should gets a course by id', async () => {
+    //@ts-expect-error defined part of methods
+    service['courseRepository'] = mockCourseRepository;
+
+    const course = await service.findOne(id);
+
+    expect(expectOutputCourses).toStrictEqual(course);
   });
 });
