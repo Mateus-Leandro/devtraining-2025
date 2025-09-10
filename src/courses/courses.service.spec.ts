@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { CoursesService } from './courses.service';
-import { createCourseDTO } from './dto/create-course.dto';
+import { createCourseDTO as updateCourseDTO } from './dto/create-course.dto';
+import { NotFoundException } from '@nestjs/common';
 
 describe('CoursesService', () => {
   let service: CoursesService;
@@ -41,7 +42,6 @@ describe('CoursesService', () => {
         id: id,
         created_at: created_at,
       })),
-      findAll: jest.fn(),
       find: jest.fn().mockResolvedValue([expectOutputCourses]),
       findOne: jest
         .fn()
@@ -50,6 +50,8 @@ describe('CoursesService', () => {
             expectOutputCourses.id === id ? expectOutputCourses : null,
           ),
         ),
+      preload: jest.fn().mockResolvedValue(expectOutputCourses),
+      remove: jest.fn().mockResolvedValue(expectOutputCourses),
     };
 
     mockTagRepository = {
@@ -58,7 +60,7 @@ describe('CoursesService', () => {
         id: id,
         created_at: created_at,
       })),
-      findOne: jest.fn(),
+      findOne: jest.fn().mockResolvedValue(expectOutputTags[0]),
     };
   });
 
@@ -72,7 +74,7 @@ describe('CoursesService', () => {
     //@ts-expect-error defined part of methods
     service['tagRepository'] = mockTagRepository;
 
-    const createCourseDTO: createCourseDTO = {
+    const createCourseDTO: updateCourseDTO = {
       name: 'test',
       description: 'test description',
       tags: ['nestjs'],
@@ -81,6 +83,9 @@ describe('CoursesService', () => {
     const newCourse = await service.create(createCourseDTO);
 
     expect(mockCourseRepository.save).toHaveBeenCalled();
+    expect(mockTagRepository.findOne).toHaveBeenCalledWith({
+      where: { name: 'nestjs' },
+    });
     expect(expectOutputCourses).toStrictEqual(newCourse);
   });
 
@@ -100,6 +105,88 @@ describe('CoursesService', () => {
 
     const course = await service.findOne(id);
 
+    expect(mockCourseRepository.findOne).toHaveBeenCalledWith({
+      where: { id },
+      relations: ['tags'],
+    });
     expect(expectOutputCourses).toStrictEqual(course);
+  });
+
+  it('should throw NotFoundException if course is not found', async () => {
+    //@ts-expect-error defined part of methods
+    service['courseRepository'] = mockCourseRepository;
+
+    mockCourseRepository.findOne.mockResolvedValueOnce(null);
+
+    await expect(service.findOne(id)).rejects.toThrow(
+      new NotFoundException(`Course ID ${id} not found`),
+    );
+  });
+
+  it('should update a course', async () => {
+    //@ts-expect-error defined part of methods
+    service['courseRepository'] = mockCourseRepository;
+    //@ts-expect-error defined part of methods
+    service['tagRepository'] = mockTagRepository;
+
+    const updateCourseDTO: updateCourseDTO = {
+      name: 'test',
+      description: 'test description',
+      tags: ['nestjs'],
+    };
+
+    const course = await service.update(id, updateCourseDTO);
+
+    expect(mockCourseRepository.preload).toHaveBeenCalledWith({
+      ...updateCourseDTO,
+      id,
+      tags: expectOutputTags,
+    });
+    expect(mockCourseRepository.save).toHaveBeenCalled();
+    expect(expectOutputCourses).toStrictEqual(course);
+  });
+
+  it('should throw NotFoundException if course to update does not exist', async () => {
+    //@ts-expect-error defined part of methods
+    service['courseRepository'] = mockCourseRepository;
+    //@ts-expect-error defined part of methods
+    service['tagRepository'] = mockTagRepository; // Adicione o mock do tagRepository
+
+    mockCourseRepository.preload.mockResolvedValueOnce(null);
+
+    const updateCourseDTO: updateCourseDTO = {
+      name: 'test',
+      description: 'test description',
+      tags: ['nestjs'],
+    };
+
+    await expect(service.update(id, updateCourseDTO)).rejects.toThrow(
+      new NotFoundException(`Course ID ${id} not found`),
+    );
+  });
+
+  it('should remove a course', async () => {
+    //@ts-expect-error defined part of methods
+    service['courseRepository'] = mockCourseRepository;
+
+    await service.remove(id);
+
+    expect(mockCourseRepository.findOne).toHaveBeenCalledWith({
+      where: { id },
+    });
+    expect(mockCourseRepository.remove).toHaveBeenCalledWith(
+      expectOutputCourses,
+    );
+  });
+
+  it('should throw NotFoundException if course to remove does not exist', async () => {
+    //@ts-expect-error defined part of methods
+    service['courseRepository'] = mockCourseRepository;
+
+    mockCourseRepository.findOne.mockResolvedValueOnce(null);
+
+    await expect(service.remove(id)).rejects.toThrow(
+      new NotFoundException(`Course ID ${id} not found`),
+    );
   });
 });
